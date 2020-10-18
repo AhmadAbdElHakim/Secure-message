@@ -23,8 +23,6 @@ engine = create_engine("mysql+pymysql://ahmadabdelhakim@mysql-eigqttnkuk7hk:abcd
 
 db = scoped_session(sessionmaker(bind = engine))
 
-connection = engine.raw_connection()
-
 app = Flask(__name__)
 app.secret_key="re;isvoa;oerngv7ddo984jsrbfreaferi875a6f/r7e9/gs7/g7ser9"
 app.permanent_session_lifetime = timedelta(days=7)
@@ -122,6 +120,7 @@ def history():
     if "loggedusername" in session:
             loggedusername = session["loggedusername"]
     loggeduserID = int((db.execute("SELECT id FROM users WHERE username=:username", {"username":loggedusername}).fetchone())[0])
+    connection = engine.raw_connection()
     cur = connection.cursor()
     cur.execute(f"SELECT * FROM messages WHERE recipientID = {loggeduserID}")
     data = cur.fetchall()
@@ -144,17 +143,17 @@ def dbdump():
 
 @app.route('/dbdump/report/excel')
 def download_report():
+    connection = engine.raw_connection()
     curr = connection.cursor()
     curr.execute("SELECT * FROM users")
     users = curr.fetchall()
-    connection.close()
     curr.close()
 
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM messages")
     messages = cursor.fetchall()
-    connection.close()
     cursor.close()
+    connection.close()
 
     #output in bytes
     output = io.BytesIO()
@@ -195,4 +194,4 @@ def download_report():
     return Response(output, mimetype="application/ms-excel", headers={"Content-Disposition":"attachment;filename=dbdump.xls"})
 
 if __name__ == "__main__":
-    app.run(debug = True)
+    app.run()

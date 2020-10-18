@@ -38,17 +38,28 @@ def index():
 def register():
     if request.method == "POST":
         username = request.form.get("username")
-        password = request.form.get("password")
+        password = str(request.form.get("password"))
         confirm = request.form.get("confirm")   
 
-        if password == confirm:
-            secure_password = sha256_crypt.encrypt(str(password))
-            db.execute("INSERT INTO users (username, password) VALUES(:username,:password)",{"username":username,"password":secure_password})
-            db.commit()
-            flash("Registration complete", "success")
-            return redirect(url_for('login'))
+        usernamedata = db.execute("SELECT username FROM users WHERE username=:username", {"username":username}).fetchone()
+        if usernamedata is None:
+            if len(password) < 8:
+                flash("The password is less than eight characters", "danger")
+                return render_template("register.html")
+            if password.isalpha() == True:
+                flash("The password doesn't contain any numbers", "danger")
+                return render_template("register.html")   
+            if password == confirm:
+                secure_password = sha256_crypt.encrypt(str(password))
+                db.execute("INSERT INTO users (username, password) VALUES(:username,:password)",{"username":username,"password":secure_password})
+                db.commit()
+                flash("Registration complete", "success")
+                return redirect(url_for('login'))
+            else:
+                flash("Password does not match", "danger")
+                return render_template("register.html")
         else:
-            flash("Password does not match", "danger")
+            flash("There is a user with this username, maybe you want to login?", "danger")
             return render_template("register.html")
     return render_template("register.html")
 
@@ -98,7 +109,7 @@ def chat():
             else:
                 return redirect(url_for('login'))
             sender = (db.execute("SELECT username FROM users WHERE username=:username", {"username":loggedusername}).fetchone())[0]
-            recipientID = (db.execute("SELECT id FROM users WHERE username=:username", {"username":username}).fetchone())[0]
+            recipientID = int((db.execute("SELECT id FROM users WHERE username=:username", {"username":username}).fetchone())[0])
             flash(f"Your message ({message}) was sent successfully to ({username})", "success") 
             db.execute("INSERT INTO messages (sender, recipientID, message) VALUES(:sender,:recipientID,:message)",{"sender":sender,"recipientID":recipientID,"message":message})
             db.commit()
@@ -110,10 +121,11 @@ def chat():
 def history():
     if "loggedusername" in session:
             loggedusername = session["loggedusername"]
-    loggeduserID = (db.execute("SELECT id FROM users WHERE username=:username", {"username":loggedusername}).fetchone())[0]
+    loggeduserID = int((db.execute("SELECT id FROM users WHERE username=:username", {"username":loggedusername}).fetchone())[0])
     cur = connection.cursor()
     cur.execute(f"SELECT * FROM messages WHERE recipientID = {loggeduserID}")
     data = cur.fetchall()
+    connection.close()
     cur.close()
     return render_template("history.html", messages = data)
 
@@ -135,11 +147,13 @@ def download_report():
     curr = connection.cursor()
     curr.execute("SELECT * FROM users")
     users = curr.fetchall()
+    connection.close()
     curr.close()
 
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM messages")
     messages = cursor.fetchall()
+    connection.close()
     cursor.close()
 
     #output in bytes

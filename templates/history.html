@@ -1,0 +1,21 @@
+{% extends "layout.html"%}
+{% block body %}
+<div class="container">
+    <h1>Secure Chat</h1>
+    <form action="" method="POST">
+        <table class="table table-striped">
+            <tr>
+                <th>Username</th>
+                <th>Message</th>
+            </tr>
+            {% for row in messages%}
+                <tr>
+                    <td>{{row.1}}</td>
+                    <td>{{row.3}}</td>
+                </tr>
+            {% endfor  %}
+        
+        </table>
+    </form>
+</div>
+{% endblock %}
